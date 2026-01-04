@@ -1,6 +1,5 @@
 // Data management
 const STORAGE_KEY = 'workOrders';
-const ORDER_NUMBER_KEY = 'workOrderCounter';
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -71,14 +70,25 @@ function saveWorkOrders(orders) {
     }
 }
 
-// Get next order number (starts from 0001, increments)
+// Get next order number (starts from 0001, increments based on existing orders)
 function getNextOrderNumber() {
     try {
-        let counter = parseInt(localStorage.getItem(ORDER_NUMBER_KEY)) || 0;
-        counter++;
-        localStorage.setItem(ORDER_NUMBER_KEY, counter.toString());
+        const orders = getWorkOrders();
+        let maxOrderNumber = 0;
+        
+        // Find the highest order number from existing orders
+        orders.forEach(order => {
+            const orderNum = parseInt(order.orderNumber);
+            if (!isNaN(orderNum) && orderNum > maxOrderNumber) {
+                maxOrderNumber = orderNum;
+            }
+        });
+        
+        // Increment from the highest existing order number
+        maxOrderNumber++;
+        
         // Format as 4-digit number with leading zeros (0001, 0002, etc.)
-        return counter.toString().padStart(4, '0');
+        return maxOrderNumber.toString().padStart(4, '0');
     } catch (error) {
         console.error('Error getting next order number:', error);
         // Fallback: use timestamp as order number if localStorage fails
