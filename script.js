@@ -1,5 +1,6 @@
 // Data management
 const STORAGE_KEY = 'workOrders';
+const ORDER_NUMBER_KEY = 'workOrderCounter';
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -58,17 +59,26 @@ function saveWorkOrders(orders) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
 }
 
+// Get next order number (starts from 0001, increments)
+function getNextOrderNumber() {
+    let counter = parseInt(localStorage.getItem(ORDER_NUMBER_KEY)) || 0;
+    counter++;
+    localStorage.setItem(ORDER_NUMBER_KEY, counter.toString());
+    // Format as 4-digit number with leading zeros (0001, 0002, etc.)
+    return counter.toString().padStart(4, '0');
+}
+
 // Handle add work order form submission
 function handleAddWorkOrder(e) {
     e.preventDefault();
 
-    const orderNumber = document.getElementById('orderNumber').value.trim();
+    const orderNumber = getNextOrderNumber();
     const description = document.getElementById('description').value.trim();
     const dateReceived = document.getElementById('dateReceived').value;
     const status = document.getElementById('status').value;
 
-    if (!orderNumber || !description) {
-        alert('Please fill in all required fields.');
+    if (!description) {
+        alert('Please fill in the description field.');
         return;
     }
 
@@ -103,13 +113,12 @@ function handleEditWorkOrder(e) {
     e.preventDefault();
 
     const id = document.getElementById('editId').value;
-    const orderNumber = document.getElementById('editOrderNumber').value.trim();
     const description = document.getElementById('editDescription').value.trim();
     const dateReceived = document.getElementById('editDateReceived').value;
     const status = document.getElementById('editStatus').value;
 
-    if (!orderNumber || !description) {
-        alert('Please fill in all required fields.');
+    if (!description) {
+        alert('Please fill in the description field.');
         return;
     }
 
@@ -119,7 +128,6 @@ function handleEditWorkOrder(e) {
     if (index !== -1) {
         orders[index] = {
             ...orders[index],
-            orderNumber: orderNumber,
             description: description,
             dateReceived: dateReceived,
             status: status,

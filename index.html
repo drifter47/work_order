@@ -18,10 +18,6 @@
             <h2>Add New Work Order</h2>
             <form id="workOrderForm">
                 <div class="form-group">
-                    <label for="orderNumber">Order Number *</label>
-                    <input type="text" id="orderNumber" name="orderNumber" required>
-                </div>
-                <div class="form-group">
                     <label for="description">Description *</label>
                     <textarea id="description" name="description" rows="3" required></textarea>
                 </div>
@@ -72,8 +68,8 @@
             <form id="editForm">
                 <input type="hidden" id="editId">
                 <div class="form-group">
-                    <label for="editOrderNumber">Order Number *</label>
-                    <input type="text" id="editOrderNumber" name="orderNumber" required>
+                    <label for="editOrderNumber">Order Number</label>
+                    <input type="text" id="editOrderNumber" name="orderNumber" readonly>
                 </div>
                 <div class="form-group">
                     <label for="editDescription">Description *</label>
