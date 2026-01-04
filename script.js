@@ -50,22 +50,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Get all work orders from localStorage
 function getWorkOrders() {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        return data ? JSON.parse(data) : [];
+    } catch (error) {
+        console.error('Error reading work orders:', error);
+        return [];
+    }
 }
 
 // Save work orders to localStorage
 function saveWorkOrders(orders) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+        return true;
+    } catch (error) {
+        console.error('Error saving work orders:', error);
+        alert('Error saving work order. Please check your browser settings.');
+        return false;
+    }
 }
 
 // Get next order number (starts from 0001, increments)
 function getNextOrderNumber() {
-    let counter = parseInt(localStorage.getItem(ORDER_NUMBER_KEY)) || 0;
-    counter++;
-    localStorage.setItem(ORDER_NUMBER_KEY, counter.toString());
-    // Format as 4-digit number with leading zeros (0001, 0002, etc.)
-    return counter.toString().padStart(4, '0');
+    try {
+        let counter = parseInt(localStorage.getItem(ORDER_NUMBER_KEY)) || 0;
+        counter++;
+        localStorage.setItem(ORDER_NUMBER_KEY, counter.toString());
+        // Format as 4-digit number with leading zeros (0001, 0002, etc.)
+        return counter.toString().padStart(4, '0');
+    } catch (error) {
+        console.error('Error getting next order number:', error);
+        // Fallback: use timestamp as order number if localStorage fails
+        return Date.now().toString().slice(-4);
+    }
 }
 
 // Handle add work order form submission
@@ -93,19 +111,20 @@ function handleAddWorkOrder(e) {
 
     const orders = getWorkOrders();
     orders.push(newOrder);
-    saveWorkOrders(orders);
+    
+    if (saveWorkOrders(orders)) {
+        // Reset form
+        document.getElementById('workOrderForm').reset();
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('dateReceived').value = today;
 
-    // Reset form
-    document.getElementById('workOrderForm').reset();
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('dateReceived').value = today;
+        // Refresh display
+        const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
+        displayWorkOrders(activeFilter);
 
-    // Refresh display
-    const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
-    displayWorkOrders(activeFilter);
-
-    // Scroll to top to see the new order
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Scroll to top to see the new order
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 }
 
 // Handle edit work order form submission
@@ -133,14 +152,15 @@ function handleEditWorkOrder(e) {
             status: status,
             lastUpdated: new Date().toISOString()
         };
-        saveWorkOrders(orders);
+        
+        if (saveWorkOrders(orders)) {
+            // Close modal
+            document.getElementById('editModal').style.display = 'none';
 
-        // Close modal
-        document.getElementById('editModal').style.display = 'none';
-
-        // Refresh display
-        const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
-        displayWorkOrders(activeFilter);
+            // Refresh display
+            const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
+            displayWorkOrders(activeFilter);
+        }
     }
 }
 
@@ -177,6 +197,7 @@ function displayWorkOrders(filter = 'all') {
 function createOrderCard(order) {
     const card = document.createElement('div');
     card.className = 'order-card';
+    card.setAttribute('data-order-id', order.id);
 
     const statusClass = order.status.toLowerCase().replace(' ', '-');
     const formattedDate = formatDate(order.dateReceived);
@@ -192,6 +213,8 @@ function createOrderCard(order) {
         </div>
         <div class="order-actions">
             <button class="btn btn-edit" onclick="editWorkOrder('${order.id}')">Edit</button>
+            <button class="btn btn-export-pdf" onclick="exportToPDF('${order.id}')">Save as PDF</button>
+            <button class="btn btn-export-img" onclick="exportToImage('${order.id}')">Save as Image</button>
             <button class="btn btn-delete" onclick="deleteWorkOrder('${order.id}')">Delete</button>
         </div>
     `;
@@ -221,11 +244,12 @@ function deleteWorkOrder(id) {
     if (confirm('Are you sure you want to delete this work order?')) {
         const orders = getWorkOrders();
         const filteredOrders = orders.filter(order => order.id !== id);
-        saveWorkOrders(filteredOrders);
-
-        // Refresh display
-        const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
-        displayWorkOrders(activeFilter);
+        
+        if (saveWorkOrders(filteredOrders)) {
+            // Refresh display
+            const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
+            displayWorkOrders(activeFilter);
+        }
     }
 }
 
@@ -251,6 +275,199 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, m => map[m]);
 }
 
+// Export work order to PDF
+function exportToPDF(orderId) {
+    const orders = getWorkOrders();
+    const order = orders.find(o => o.id === orderId);
+    
+    if (!order) return;
+    
+    // Create a printable version of the work order
+    const printWindow = window.open('', '_blank');
+    const statusClass = order.status.toLowerCase().replace(' ', '-');
+    const formattedDate = formatDate(order.dateReceived);
+    
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Work Order ${escapeHtml(order.orderNumber)}</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    padding: 40px;
+                    max-width: 800px;
+                    margin: 0 auto;
+                }
+                .header {
+                    border-bottom: 3px solid #2c3e50;
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }
+                .header h1 {
+                    color: #2c3e50;
+                    margin: 0;
+                }
+                .order-info {
+                    margin-bottom: 30px;
+                }
+                .info-row {
+                    display: flex;
+                    margin-bottom: 15px;
+                    padding: 10px;
+                    border-bottom: 1px solid #eee;
+                }
+                .info-label {
+                    font-weight: bold;
+                    width: 150px;
+                    color: #555;
+                }
+                .info-value {
+                    flex: 1;
+                    color: #333;
+                }
+                .status-badge {
+                    display: inline-block;
+                    padding: 6px 12px;
+                    border-radius: 20px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                }
+                .status-pending {
+                    background-color: #fff3cd;
+                    color: #856404;
+                }
+                .status-in-progress {
+                    background-color: #cfe2ff;
+                    color: #084298;
+                }
+                .status-completed {
+                    background-color: #d1e7dd;
+                    color: #0f5132;
+                }
+                .description {
+                    background-color: #f8f9fa;
+                    padding: 15px;
+                    border-left: 4px solid #3498db;
+                    margin-top: 10px;
+                }
+                @media print {
+                    body { padding: 20px; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Work Order #${escapeHtml(order.orderNumber)}</h1>
+            </div>
+            <div class="order-info">
+                <div class="info-row">
+                    <div class="info-label">Order Number:</div>
+                    <div class="info-value">${escapeHtml(order.orderNumber)}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Status:</div>
+                    <div class="info-value">
+                        <span class="status-badge status-${statusClass}">${escapeHtml(order.status)}</span>
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Date Received:</div>
+                    <div class="info-value">${formattedDate}</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Description:</div>
+                    <div class="info-value"></div>
+                </div>
+            </div>
+            <div class="description">
+                ${escapeHtml(order.description).replace(/\n/g, '<br>')}
+            </div>
+        </body>
+        </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.focus();
+    
+    // Wait for content to load, then print
+    setTimeout(() => {
+        printWindow.print();
+    }, 250);
+}
+
+// Export work order to image (JPEG/PNG)
+function exportToImage(orderId) {
+    // Check if html2canvas is loaded
+    if (typeof html2canvas === 'undefined') {
+        alert('Image export library is loading. Please try again in a moment.');
+        return;
+    }
+    
+    const orders = getWorkOrders();
+    const order = orders.find(o => o.id === orderId);
+    
+    if (!order) return;
+    
+    // Find the card element
+    const targetCard = document.querySelector(`.order-card[data-order-id="${orderId}"]`);
+    
+    if (!targetCard) {
+        alert('Could not find work order card.');
+        return;
+    }
+    
+    // Clone the card to avoid modifying the original
+    const clonedCard = targetCard.cloneNode(true);
+    
+    // Remove action buttons from clone
+    const actionButtons = clonedCard.querySelector('.order-actions');
+    if (actionButtons) {
+        actionButtons.remove();
+    }
+    
+    // Create temporary container
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.width = targetCard.offsetWidth + 'px';
+    tempContainer.style.backgroundColor = '#fff';
+    tempContainer.style.padding = '20px';
+    tempContainer.appendChild(clonedCard);
+    document.body.appendChild(tempContainer);
+    
+    // Convert to canvas
+    html2canvas(clonedCard, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        logging: false
+    }).then(canvas => {
+        // Create download link
+        canvas.toBlob(function(blob) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Work_Order_${order.orderNumber}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }, 'image/png');
+        
+        // Clean up
+        document.body.removeChild(tempContainer);
+    }).catch(error => {
+        console.error('Error exporting image:', error);
+        alert('Error exporting image. Please try again.');
+        if (document.body.contains(tempContainer)) {
+            document.body.removeChild(tempContainer);
+        }
+    });
+}
+
 // Make functions globally available for inline onclick handlers
 window.editWorkOrder = editWorkOrder;
 window.deleteWorkOrder = deleteWorkOrder;
+window.exportToPDF = exportToPDF;
+window.exportToImage = exportToImage;
