@@ -14,33 +14,72 @@
             <h1>Work Order Manager</h1>
         </header>
 
-        <!-- Add Work Order Form -->
+        <section class="stats-section">
+            <div class="stat-card stat-pending">
+                <h3>Pending</h3>
+                <p id="countPending">0</p>
+            </div>
+            <div class="stat-card stat-progress">
+                <h3>In Progress</h3>
+                <p id="countInProgress">0</p>
+            </div>
+            <div class="stat-card stat-completed">
+                <h3>Completed</h3>
+                <p id="countCompleted">0</p>
+            </div>
+        </section>
+
         <section class="form-section">
             <h2>Add New Work Order</h2>
             <form id="workOrderForm">
                 <div class="form-group">
-                    <label for="description">Description *</label>
-                    <textarea id="description" name="description" rows="3" required></textarea>
+                    <label for="dateOfWorkOrder">Date of Work Order *</label>
+                    <input type="date" id="dateOfWorkOrder" name="dateOfWorkOrder" required>
+                </div>
+                <div class="row-group">
+                    <div class="form-group half-width">
+                        <label for="priority">Priority</label>
+                        <select id="priority" name="priority">
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    <div class="form-group half-width">
+                        <label for="status">Status</label>
+                        <select id="status" name="status">
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label for="dateReceived">Date Received</label>
-                    <input type="date" id="dateReceived" name="dateReceived" required>
+                    <label for="customerName">Customer Name *</label>
+                    <input type="text" id="customerName" name="customerName" required>
                 </div>
                 <div class="form-group">
-                    <label for="status">Status</label>
-                    <select id="status" name="status">
-                        <option value="Pending">Pending</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                    </select>
+                    <label for="vehicleModel">Vehicle Model *</label>
+                    <input type="text" id="vehicleModel" name="vehicleModel" required>
+                </div>
+                <div class="form-group">
+                    <label for="vehicleVin">Vehicle VIN Number *</label>
+                    <input type="text" id="vehicleVin" name="vehicleVin" required>
+                </div>
+                <div class="form-group">
+                    <label for="partsUsed">Parts Used</label>
+                    <textarea id="partsUsed" name="partsUsed" rows="3" placeholder="Enter parts used (optional)"></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary">Add Work Order</button>
             </form>
         </section>
 
-        <!-- Filter Section -->
         <section class="filter-section">
-            <h2>Filter by Status</h2>
+            <div class="filter-header">
+                <h2>Filter Orders</h2>
+                <input type="text" id="searchInput" placeholder="Search by customer name, vehicle model, VIN, parts, or ID..." class="search-input">
+            </div>
+            
             <div class="filter-buttons">
                 <button class="filter-btn active" data-filter="all">All</button>
                 <button class="filter-btn" data-filter="Pending">Pending</button>
@@ -49,19 +88,33 @@
             </div>
         </section>
 
-        <!-- Work Orders List -->
         <section class="orders-section">
             <h2>Work Orders</h2>
             <div id="ordersList" class="orders-list">
-                <!-- Work orders will be dynamically inserted here -->
-            </div>
+                </div>
             <div id="emptyState" class="empty-state" style="display: none;">
                 <p>No work orders found. Add your first work order above.</p>
             </div>
         </section>
+
+        <section class="data-section">
+            <h2>Data Management</h2>
+            <div class="data-controls">
+                <button onclick="downloadBackup()" class="btn btn-secondary">
+                    ⬇️ Backup Data
+                </button>
+                
+                <div class="import-wrapper">
+                    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importBackup(this)">
+                    <button onclick="document.getElementById('importFile').click()" class="btn btn-secondary">
+                        ⬆️ Restore Data
+                    </button>
+                </div>
+            </div>
+            <p class="data-note">Note: Restoring data will replace all current work orders.</p>
+        </section>
     </div>
 
-    <!-- Edit Modal -->
     <div id="editModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -73,20 +126,42 @@
                     <input type="text" id="editOrderNumber" name="orderNumber" readonly>
                 </div>
                 <div class="form-group">
-                    <label for="editDescription">Description *</label>
-                    <textarea id="editDescription" name="description" rows="3" required></textarea>
+                    <label for="editDateOfWorkOrder">Date of Work Order *</label>
+                    <input type="date" id="editDateOfWorkOrder" name="dateOfWorkOrder" required>
+                </div>
+                <div class="row-group">
+                    <div class="form-group half-width">
+                        <label for="editPriority">Priority</label>
+                        <select id="editPriority" name="priority">
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    <div class="form-group half-width">
+                        <label for="editStatus">Status</label>
+                        <select id="editStatus" name="status">
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label for="editDateReceived">Date Received</label>
-                    <input type="date" id="editDateReceived" name="dateReceived" required>
+                    <label for="editCustomerName">Customer Name *</label>
+                    <input type="text" id="editCustomerName" name="customerName" required>
                 </div>
                 <div class="form-group">
-                    <label for="editStatus">Status</label>
-                    <select id="editStatus" name="status">
-                        <option value="Pending">Pending</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                    </select>
+                    <label for="editVehicleModel">Vehicle Model *</label>
+                    <input type="text" id="editVehicleModel" name="vehicleModel" required>
+                </div>
+                <div class="form-group">
+                    <label for="editVehicleVin">Vehicle VIN Number *</label>
+                    <input type="text" id="editVehicleVin" name="vehicleVin" required>
+                </div>
+                <div class="form-group">
+                    <label for="editPartsUsed">Parts Used</label>
+                    <textarea id="editPartsUsed" name="partsUsed" rows="3" placeholder="Enter parts used (optional)"></textarea>
                 </div>
                 <div class="modal-buttons">
                     <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -95,6 +170,8 @@
             </form>
         </div>
     </div>
+
+    <div id="toast-container"></div>
 
     <script src="script.js"></script>
 </body>

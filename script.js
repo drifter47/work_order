@@ -1,11 +1,19 @@
 // Data management
 const STORAGE_KEY = 'workOrders';
 
+// Helper: Get local date string in YYYY-MM-DD format
+function getLocalTodayDate() {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    // Set today's date as default
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('dateReceived').value = today;
+    // FIXED: Set today's date using local time
+    document.getElementById('dateOfWorkOrder').value = getLocalTodayDate();
 
     // Load and display work orders
     displayWorkOrders();
@@ -13,6 +21,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Form submission handlers
     document.getElementById('workOrderForm').addEventListener('submit', handleAddWorkOrder);
     document.getElementById('editForm').addEventListener('submit', handleEditWorkOrder);
+
+    // Search input handler
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const activeBtn = document.querySelector('.filter-btn.active');
+        const filter = activeBtn ? activeBtn.getAttribute('data-filter') : 'all';
+        displayWorkOrders(filter);
+    });
 
     // Filter button handlers
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -32,18 +47,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeBtn = document.querySelector('.close');
     const cancelBtn = document.getElementById('cancelEdit');
 
-    closeBtn.onclick = function() {
-        modal.style.display = 'none';
-    };
-
-    cancelBtn.onclick = function() {
-        modal.style.display = 'none';
-    };
-
+    closeBtn.onclick = function() { modal.style.display = 'none'; };
+    cancelBtn.onclick = function() { modal.style.display = 'none'; };
     window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = 'none';
-        }
+        if (event.target == modal) { modal.style.display = 'none'; }
     };
 });
 
@@ -65,57 +72,69 @@ function saveWorkOrders(orders) {
         return true;
     } catch (error) {
         console.error('Error saving work orders:', error);
-        alert('Error saving work order. Please check your browser settings.');
+        showToast('Error saving work order.', 'error');
         return false;
     }
 }
 
-// Get next order number (starts from 0001, increments based on existing orders)
+// Get next order number
 function getNextOrderNumber() {
     try {
         const orders = getWorkOrders();
         let maxOrderNumber = 0;
-        
-        // Find the highest order number from existing orders
         orders.forEach(order => {
             const orderNum = parseInt(order.orderNumber);
             if (!isNaN(orderNum) && orderNum > maxOrderNumber) {
                 maxOrderNumber = orderNum;
             }
         });
-        
-        // Increment from the highest existing order number
         maxOrderNumber++;
-        
-        // Format as 4-digit number with leading zeros (0001, 0002, etc.)
         return maxOrderNumber.toString().padStart(4, '0');
     } catch (error) {
-        console.error('Error getting next order number:', error);
-        // Fallback: use timestamp as order number if localStorage fails
         return Date.now().toString().slice(-4);
     }
 }
 
-// Handle add work order form submission
+// Update dashboard statistics
+function updateStats() {
+    const orders = getWorkOrders();
+    const counts = { Pending: 0, 'In Progress': 0, Completed: 0 };
+    orders.forEach(order => {
+        if (counts.hasOwnProperty(order.status)) { counts[order.status]++; }
+    });
+    document.getElementById('countPending').textContent = counts.Pending;
+    document.getElementById('countInProgress').textContent = counts['In Progress'];
+    document.getElementById('countCompleted').textContent = counts.Completed;
+}
+
+// Handle add work order
 function handleAddWorkOrder(e) {
     e.preventDefault();
 
     const orderNumber = getNextOrderNumber();
-    const description = document.getElementById('description').value.trim();
-    const dateReceived = document.getElementById('dateReceived').value;
+    const dateOfWorkOrder = document.getElementById('dateOfWorkOrder').value;
+    const priority = document.getElementById('priority').value;
     const status = document.getElementById('status').value;
+    const customerName = document.getElementById('customerName').value.trim();
+    const vehicleModel = document.getElementById('vehicleModel').value.trim();
+    const vehicleVin = document.getElementById('vehicleVin').value.trim();
+    const partsUsed = document.getElementById('partsUsed').value.trim();
 
-    if (!description) {
-        alert('Please fill in the description field.');
+    if (!customerName || !vehicleModel || !vehicleVin) {
+        showToast('Please fill in all required fields.', 'error');
         return;
     }
 
     const newOrder = {
         id: Date.now().toString(),
         orderNumber: orderNumber,
-        description: description,
-        dateReceived: dateReceived,
+        dateOfWorkOrder: dateOfWorkOrder,
+        priority: priority,
         status: status,
+        customerName: customerName,
+        vehicleModel: vehicleModel,
+        vehicleVin: vehicleVin,
+        partsUsed: partsUsed,
         lastUpdated: new Date().toISOString()
     };
 
@@ -123,31 +142,34 @@ function handleAddWorkOrder(e) {
     orders.push(newOrder);
     
     if (saveWorkOrders(orders)) {
-        // Reset form
         document.getElementById('workOrderForm').reset();
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('dateReceived').value = today;
-
-        // Refresh display
+        
+        // FIXED: Reset date to today (Local Time)
+        document.getElementById('dateOfWorkOrder').value = getLocalTodayDate();
+        document.getElementById('priority').value = 'Medium';
+        
         const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
         displayWorkOrders(activeFilter);
-
-        // Scroll to top to see the new order
+        showToast('Work order created successfully!', 'success');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 }
 
-// Handle edit work order form submission
+// Handle edit work order
 function handleEditWorkOrder(e) {
     e.preventDefault();
 
     const id = document.getElementById('editId').value;
-    const description = document.getElementById('editDescription').value.trim();
-    const dateReceived = document.getElementById('editDateReceived').value;
+    const dateOfWorkOrder = document.getElementById('editDateOfWorkOrder').value;
+    const priority = document.getElementById('editPriority').value;
     const status = document.getElementById('editStatus').value;
+    const customerName = document.getElementById('editCustomerName').value.trim();
+    const vehicleModel = document.getElementById('editVehicleModel').value.trim();
+    const vehicleVin = document.getElementById('editVehicleVin').value.trim();
+    const partsUsed = document.getElementById('editPartsUsed').value.trim();
 
-    if (!description) {
-        alert('Please fill in the description field.');
+    if (!customerName || !vehicleModel || !vehicleVin) {
+        showToast('Please fill in all required fields.', 'error');
         return;
     }
 
@@ -157,43 +179,62 @@ function handleEditWorkOrder(e) {
     if (index !== -1) {
         orders[index] = {
             ...orders[index],
-            description: description,
-            dateReceived: dateReceived,
+            dateOfWorkOrder: dateOfWorkOrder,
+            priority: priority,
             status: status,
+            customerName: customerName,
+            vehicleModel: vehicleModel,
+            vehicleVin: vehicleVin,
+            partsUsed: partsUsed,
             lastUpdated: new Date().toISOString()
         };
         
         if (saveWorkOrders(orders)) {
-            // Close modal
             document.getElementById('editModal').style.display = 'none';
-
-            // Refresh display
             const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
             displayWorkOrders(activeFilter);
+            showToast('Work order updated!', 'success');
         }
     }
 }
 
-// Display work orders
+// Display work orders with filters and search
 function displayWorkOrders(filter = 'all') {
+    updateStats();
+
     const orders = getWorkOrders();
     const ordersList = document.getElementById('ordersList');
     const emptyState = document.getElementById('emptyState');
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
 
     // Filter orders
-    let filteredOrders = orders;
-    if (filter !== 'all') {
-        filteredOrders = orders.filter(order => order.status === filter);
-    }
+    let filteredOrders = orders.filter(order => {
+        const statusMatch = filter === 'all' || order.status === filter;
+        const searchMatch = !searchTerm || 
+                            (order.customerName && order.customerName.toLowerCase().includes(searchTerm)) ||
+                            (order.vehicleModel && order.vehicleModel.toLowerCase().includes(searchTerm)) ||
+                            (order.vehicleVin && order.vehicleVin.toLowerCase().includes(searchTerm)) ||
+                            (order.partsUsed && order.partsUsed.toLowerCase().includes(searchTerm)) ||
+                            order.orderNumber.toLowerCase().includes(searchTerm);
+        return statusMatch && searchMatch;
+    });
 
     // Sort by date (newest first)
-    filteredOrders.sort((a, b) => new Date(b.dateReceived) - new Date(a.dateReceived));
+    filteredOrders.sort((a, b) => {
+        const dateA = a.dateOfWorkOrder || a.dateReceived || '';
+        const dateB = b.dateOfWorkOrder || b.dateReceived || '';
+        return new Date(dateB) - new Date(dateA);
+    });
 
-    // Clear existing content
     ordersList.innerHTML = '';
 
     if (filteredOrders.length === 0) {
         emptyState.style.display = 'block';
+        if (searchTerm) {
+            emptyState.innerHTML = `<p>No orders found matching "${escapeHtml(searchTerm)}"</p>`;
+        } else {
+            emptyState.innerHTML = `<p>No work orders found. Add your first work order above.</p>`;
+        }
     } else {
         emptyState.style.display = 'none';
         filteredOrders.forEach(order => {
@@ -210,16 +251,29 @@ function createOrderCard(order) {
     card.setAttribute('data-order-id', order.id);
 
     const statusClass = order.status.toLowerCase().replace(' ', '-');
-    const formattedDate = formatDate(order.dateReceived);
+    const priority = order.priority || 'Medium';
+    const priorityClass = priority.toLowerCase();
+    const dateValue = order.dateOfWorkOrder || order.dateReceived || '';
+    const formattedDate = dateValue ? formatDate(dateValue) : 'N/A';
+    const customerName = order.customerName || '';
+    const vehicleModel = order.vehicleModel || '';
+    const vehicleVin = order.vehicleVin || '';
+    const partsUsed = order.partsUsed || '';
 
     card.innerHTML = `
         <div class="order-header">
             <div class="order-number">${escapeHtml(order.orderNumber)}</div>
-            <span class="status-badge status-${statusClass}">${escapeHtml(order.status)}</span>
+            <div>
+                <span class="priority-badge priority-${priorityClass}">${escapeHtml(priority)}</span>
+                <span class="status-badge status-${statusClass}">${escapeHtml(order.status)}</span>
+            </div>
         </div>
         <div class="order-details">
-            <p><strong>Description:</strong> ${escapeHtml(order.description)}</p>
-            <p class="order-date"><strong>Date Received:</strong> ${formattedDate}</p>
+            <p><strong>Date of Work Order:</strong> ${formattedDate}</p>
+            <p><strong>Customer Name:</strong> ${escapeHtml(customerName)}</p>
+            <p><strong>Vehicle Model:</strong> ${escapeHtml(vehicleModel)}</p>
+            <p><strong>Vehicle VIN Number:</strong> ${escapeHtml(vehicleVin)}</p>
+            ${partsUsed ? `<p><strong>Parts Used:</strong> ${escapeHtml(partsUsed).replace(/\n/g, '<br>')}</p>` : ''}
         </div>
         <div class="order-actions">
             <button class="btn btn-edit" onclick="editWorkOrder('${order.id}')">Edit</button>
@@ -240,9 +294,14 @@ function editWorkOrder(id) {
     if (order) {
         document.getElementById('editId').value = order.id;
         document.getElementById('editOrderNumber').value = order.orderNumber;
-        document.getElementById('editDescription').value = order.description;
-        document.getElementById('editDateReceived').value = order.dateReceived;
+        const dateValue = order.dateOfWorkOrder || order.dateReceived || '';
+        document.getElementById('editDateOfWorkOrder').value = dateValue;
         document.getElementById('editStatus').value = order.status;
+        document.getElementById('editPriority').value = order.priority || 'Medium';
+        document.getElementById('editCustomerName').value = order.customerName || '';
+        document.getElementById('editVehicleModel').value = order.vehicleModel || '';
+        document.getElementById('editVehicleVin').value = order.vehicleVin || '';
+        document.getElementById('editPartsUsed').value = order.partsUsed || '';
 
         const modal = document.getElementById('editModal');
         modal.style.display = 'block';
@@ -256,46 +315,106 @@ function deleteWorkOrder(id) {
         const filteredOrders = orders.filter(order => order.id !== id);
         
         if (saveWorkOrders(filteredOrders)) {
-            // Refresh display
             const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
             displayWorkOrders(activeFilter);
+            showToast('Work order deleted.', 'info');
         }
     }
 }
 
-// Format date for display
+// Format date
 function formatDate(dateString) {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString + 'T00:00:00');
     return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        year: 'numeric', month: 'long', day: 'numeric'
     });
 }
 
-// Escape HTML to prevent XSS
+// Escape HTML
 function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
     return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-// Export work order to PDF
+// Toast Notifications
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    
+    requestAnimationFrame(() => { toast.classList.add('show'); });
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        toast.classList.add('hide');
+        setTimeout(() => {
+            if (container.contains(toast)) { container.removeChild(toast); }
+        }, 300);
+    }, 3000);
+}
+
+// Backup & Restore
+function downloadBackup() {
+    const orders = localStorage.getItem(STORAGE_KEY);
+    if (!orders || orders === '[]') {
+        showToast('No data to backup.', 'error');
+        return;
+    }
+    const blob = new Blob([orders], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const date = new Date().toISOString().split('T')[0];
+    a.download = `work_orders_backup_${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Backup downloaded successfully.', 'success');
+}
+
+function importBackup(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (!confirm('WARNING: This will overwrite all current work orders. Are you sure?')) {
+        input.value = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!Array.isArray(data)) throw new Error('Invalid data format');
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            displayWorkOrders();
+            showToast('Data restored successfully!', 'success');
+        } catch (error) {
+            console.error('Import error:', error);
+            showToast('Error restoring data. Invalid file.', 'error');
+        }
+        input.value = '';
+    };
+    reader.readAsText(file);
+}
+
+// Export functions
 function exportToPDF(orderId) {
     const orders = getWorkOrders();
     const order = orders.find(o => o.id === orderId);
-    
     if (!order) return;
     
-    // Create a printable version of the work order
     const printWindow = window.open('', '_blank');
     const statusClass = order.status.toLowerCase().replace(' ', '-');
-    const formattedDate = formatDate(order.dateReceived);
+    const dateValue = order.dateOfWorkOrder || order.dateReceived || '';
+    const formattedDate = formatDate(dateValue);
+    const priority = order.priority || 'Medium';
+    const customerName = order.customerName || '';
+    const vehicleModel = order.vehicleModel || '';
+    const vehicleVin = order.vehicleVin || '';
+    const partsUsed = order.partsUsed || '';
     
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -303,141 +422,59 @@ function exportToPDF(orderId) {
         <head>
             <title>Work Order ${escapeHtml(order.orderNumber)}</title>
             <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    padding: 40px;
-                    max-width: 800px;
-                    margin: 0 auto;
-                }
-                .header {
-                    border-bottom: 3px solid #2c3e50;
-                    padding-bottom: 20px;
-                    margin-bottom: 30px;
-                }
-                .header h1 {
-                    color: #2c3e50;
-                    margin: 0;
-                }
-                .order-info {
-                    margin-bottom: 30px;
-                }
-                .info-row {
-                    display: flex;
-                    margin-bottom: 15px;
-                    padding: 10px;
-                    border-bottom: 1px solid #eee;
-                }
-                .info-label {
-                    font-weight: bold;
-                    width: 150px;
-                    color: #555;
-                }
-                .info-value {
-                    flex: 1;
-                    color: #333;
-                }
-                .status-badge {
-                    display: inline-block;
-                    padding: 6px 12px;
-                    border-radius: 20px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                }
-                .status-pending {
-                    background-color: #fff3cd;
-                    color: #856404;
-                }
-                .status-in-progress {
-                    background-color: #cfe2ff;
-                    color: #084298;
-                }
-                .status-completed {
-                    background-color: #d1e7dd;
-                    color: #0f5132;
-                }
-                .description {
-                    background-color: #f8f9fa;
-                    padding: 15px;
-                    border-left: 4px solid #3498db;
-                    margin-top: 10px;
-                }
-                @media print {
-                    body { padding: 20px; }
-                }
+                body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+                .header { border-bottom: 3px solid #2c3e50; padding-bottom: 20px; margin-bottom: 30px; }
+                .header h1 { color: #2c3e50; margin: 0; }
+                .info-row { display: flex; margin-bottom: 15px; padding: 10px; border-bottom: 1px solid #eee; }
+                .info-label { font-weight: bold; width: 200px; color: #555; }
+                .info-value { flex: 1; }
+                .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-weight: 600; text-transform: uppercase; }
+                .status-pending { background-color: #fff3cd; color: #856404; }
+                .status-in-progress { background-color: #cfe2ff; color: #084298; }
+                .status-completed { background-color: #d1e7dd; color: #0f5132; }
+                .parts-section { background-color: #f8f9fa; padding: 15px; border-left: 4px solid #3498db; margin-top: 10px; }
             </style>
         </head>
         <body>
-            <div class="header">
-                <h1>Work Order #${escapeHtml(order.orderNumber)}</h1>
-            </div>
+            <div class="header"><h1>Work Order #${escapeHtml(order.orderNumber)}</h1></div>
             <div class="order-info">
-                <div class="info-row">
-                    <div class="info-label">Order Number:</div>
-                    <div class="info-value">${escapeHtml(order.orderNumber)}</div>
-                </div>
-                <div class="info-row">
-                    <div class="info-label">Status:</div>
-                    <div class="info-value">
-                        <span class="status-badge status-${statusClass}">${escapeHtml(order.status)}</span>
-                    </div>
-                </div>
-                <div class="info-row">
-                    <div class="info-label">Date Received:</div>
-                    <div class="info-value">${formattedDate}</div>
-                </div>
-                <div class="info-row">
-                    <div class="info-label">Description:</div>
-                    <div class="info-value"></div>
-                </div>
+                <div class="info-row"><div class="info-label">Order Number:</div><div class="info-value">${escapeHtml(order.orderNumber)}</div></div>
+                <div class="info-row"><div class="info-label">Date of Work Order:</div><div class="info-value">${formattedDate}</div></div>
+                <div class="info-row"><div class="info-label">Status:</div><div class="info-value"><span class="status-badge status-${statusClass}">${escapeHtml(order.status)}</span></div></div>
+                <div class="info-row"><div class="info-label">Priority:</div><div class="info-value">${escapeHtml(priority)}</div></div>
+                <div class="info-row"><div class="info-label">Customer Name:</div><div class="info-value">${escapeHtml(customerName)}</div></div>
+                <div class="info-row"><div class="info-label">Vehicle Model:</div><div class="info-value">${escapeHtml(vehicleModel)}</div></div>
+                <div class="info-row"><div class="info-label">Vehicle VIN Number:</div><div class="info-value">${escapeHtml(vehicleVin)}</div></div>
             </div>
-            <div class="description">
-                ${escapeHtml(order.description).replace(/\n/g, '<br>')}
-            </div>
+            ${partsUsed ? `<div class="parts-section"><strong>Parts Used:</strong><br>${escapeHtml(partsUsed).replace(/\n/g, '<br>')}</div>` : ''}
         </body>
         </html>
     `);
     
     printWindow.document.close();
     printWindow.focus();
-    
-    // Wait for content to load, then print
-    setTimeout(() => {
-        printWindow.print();
-    }, 250);
+    setTimeout(() => { printWindow.print(); }, 250);
 }
 
-// Export work order to image (JPEG/PNG)
 function exportToImage(orderId) {
-    // Check if html2canvas is loaded
     if (typeof html2canvas === 'undefined') {
-        alert('Image export library is loading. Please try again in a moment.');
+        showToast('Image export library is loading. Please try again.', 'info');
         return;
     }
     
     const orders = getWorkOrders();
     const order = orders.find(o => o.id === orderId);
-    
     if (!order) return;
     
-    // Find the card element
     const targetCard = document.querySelector(`.order-card[data-order-id="${orderId}"]`);
-    
     if (!targetCard) {
-        alert('Could not find work order card.');
+        showToast('Could not find work order card.', 'error');
         return;
     }
     
-    // Clone the card to avoid modifying the original
     const clonedCard = targetCard.cloneNode(true);
+    if (clonedCard.querySelector('.order-actions')) clonedCard.querySelector('.order-actions').remove();
     
-    // Remove action buttons from clone
-    const actionButtons = clonedCard.querySelector('.order-actions');
-    if (actionButtons) {
-        actionButtons.remove();
-    }
-    
-    // Create temporary container
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
@@ -447,13 +484,7 @@ function exportToImage(orderId) {
     tempContainer.appendChild(clonedCard);
     document.body.appendChild(tempContainer);
     
-    // Convert to canvas
-    html2canvas(clonedCard, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        logging: false
-    }).then(canvas => {
-        // Create download link
+    html2canvas(clonedCard, { backgroundColor: '#ffffff', scale: 2, logging: false }).then(canvas => {
         canvas.toBlob(function(blob) {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -463,21 +494,20 @@ function exportToImage(orderId) {
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+            showToast('Image downloaded!', 'success');
         }, 'image/png');
-        
-        // Clean up
         document.body.removeChild(tempContainer);
     }).catch(error => {
         console.error('Error exporting image:', error);
-        alert('Error exporting image. Please try again.');
-        if (document.body.contains(tempContainer)) {
-            document.body.removeChild(tempContainer);
-        }
+        showToast('Error exporting image.', 'error');
+        if (document.body.contains(tempContainer)) { document.body.removeChild(tempContainer); }
     });
 }
 
-// Make functions globally available for inline onclick handlers
+// Global exports
 window.editWorkOrder = editWorkOrder;
 window.deleteWorkOrder = deleteWorkOrder;
 window.exportToPDF = exportToPDF;
 window.exportToImage = exportToImage;
+window.downloadBackup = downloadBackup;
+window.importBackup = importBackup;
