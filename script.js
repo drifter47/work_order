@@ -1,11 +1,19 @@
 // Data management
 const STORAGE_KEY = 'workOrders';
 
+// Helper: Get local date string in YYYY-MM-DD format
+function getLocalTodayDate() {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    // Set today's date as default
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('dateReceived').value = today;
+    // FIXED: Set today's date using local time
+    document.getElementById('dateReceived').value = getLocalTodayDate();
 
     // Load and display work orders
     displayWorkOrders();
@@ -129,7 +137,9 @@ function handleAddWorkOrder(e) {
     
     if (saveWorkOrders(orders)) {
         document.getElementById('workOrderForm').reset();
-        document.getElementById('dateReceived').value = new Date().toISOString().split('T')[0];
+        
+        // FIXED: Reset date to today (Local Time)
+        document.getElementById('dateReceived').value = getLocalTodayDate();
         document.getElementById('priority').value = 'Medium';
         
         const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
