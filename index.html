@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Work Order Management App">
-    <title>Work Order Manager v2.0</title>
+    <title>Work Order Manager</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -40,13 +40,23 @@
                     <label for="dateReceived">Date Received</label>
                     <input type="date" id="dateReceived" name="dateReceived" required>
                 </div>
-                <div class="form-group">
-                    <label for="status">Status</label>
-                    <select id="status" name="status">
-                        <option value="Pending">Pending</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                    </select>
+                <div class="row-group">
+                    <div class="form-group half-width">
+                        <label for="priority">Priority</label>
+                        <select id="priority" name="priority">
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    <div class="form-group half-width">
+                        <label for="status">Status</label>
+                        <select id="status" name="status">
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary">Add Work Order</button>
             </form>
@@ -57,6 +67,7 @@
                 <h2>Filter Orders</h2>
                 <input type="text" id="searchInput" placeholder="Search by description or ID..." class="search-input">
             </div>
+            
             <div class="filter-buttons">
                 <button class="filter-btn active" data-filter="all">All</button>
                 <button class="filter-btn" data-filter="Pending">Pending</button>
@@ -110,13 +121,23 @@
                     <label for="editDateReceived">Date Received</label>
                     <input type="date" id="editDateReceived" name="dateReceived" required>
                 </div>
-                <div class="form-group">
-                    <label for="editStatus">Status</label>
-                    <select id="editStatus" name="status">
-                        <option value="Pending">Pending</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                    </select>
+                <div class="row-group">
+                    <div class="form-group half-width">
+                        <label for="editPriority">Priority</label>
+                        <select id="editPriority" name="priority">
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    <div class="form-group half-width">
+                        <label for="editStatus">Status</label>
+                        <select id="editStatus" name="status">
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="modal-buttons">
                     <button type="submit" class="btn btn-primary">Save Changes</button>
