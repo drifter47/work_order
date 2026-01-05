@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Work Order Management App">
-    <title>Work Order Manager</title>
+    <title>Work Order Manager v2.0</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -14,7 +14,21 @@
             <h1>Work Order Manager</h1>
         </header>
 
-        <!-- Add Work Order Form -->
+        <section class="stats-section">
+            <div class="stat-card stat-pending">
+                <h3>Pending</h3>
+                <p id="countPending">0</p>
+            </div>
+            <div class="stat-card stat-progress">
+                <h3>In Progress</h3>
+                <p id="countInProgress">0</p>
+            </div>
+            <div class="stat-card stat-completed">
+                <h3>Completed</h3>
+                <p id="countCompleted">0</p>
+            </div>
+        </section>
+
         <section class="form-section">
             <h2>Add New Work Order</h2>
             <form id="workOrderForm">
@@ -38,9 +52,11 @@
             </form>
         </section>
 
-        <!-- Filter Section -->
         <section class="filter-section">
-            <h2>Filter by Status</h2>
+            <div class="filter-header">
+                <h2>Filter Orders</h2>
+                <input type="text" id="searchInput" placeholder="Search by description or ID..." class="search-input">
+            </div>
             <div class="filter-buttons">
                 <button class="filter-btn active" data-filter="all">All</button>
                 <button class="filter-btn" data-filter="Pending">Pending</button>
@@ -49,19 +65,33 @@
             </div>
         </section>
 
-        <!-- Work Orders List -->
         <section class="orders-section">
             <h2>Work Orders</h2>
             <div id="ordersList" class="orders-list">
-                <!-- Work orders will be dynamically inserted here -->
-            </div>
+                </div>
             <div id="emptyState" class="empty-state" style="display: none;">
                 <p>No work orders found. Add your first work order above.</p>
             </div>
         </section>
+
+        <section class="data-section">
+            <h2>Data Management</h2>
+            <div class="data-controls">
+                <button onclick="downloadBackup()" class="btn btn-secondary">
+                    ⬇️ Backup Data
+                </button>
+                
+                <div class="import-wrapper">
+                    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importBackup(this)">
+                    <button onclick="document.getElementById('importFile').click()" class="btn btn-secondary">
+                        ⬆️ Restore Data
+                    </button>
+                </div>
+            </div>
+            <p class="data-note">Note: Restoring data will replace all current work orders.</p>
+        </section>
     </div>
 
-    <!-- Edit Modal -->
     <div id="editModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -95,6 +125,8 @@
             </form>
         </div>
     </div>
+
+    <div id="toast-container"></div>
 
     <script src="script.js"></script>
 </body>
